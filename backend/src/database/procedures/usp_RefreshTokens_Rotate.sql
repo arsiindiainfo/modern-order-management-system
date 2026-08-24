@@ -32,6 +32,12 @@ BEGIN
     RETURN;
   END
 
+  IF NOT EXISTS (SELECT 1 FROM Users WHERE Id = @UserId AND IsActive = 1)
+  BEGIN
+    RAISERROR('UNAUTHENTICATED', 16, 1);
+    RETURN;
+  END
+
   DECLARE @NewId UNIQUEIDENTIFIER = NEWID();
 
   BEGIN TRANSACTION;
@@ -41,7 +47,12 @@ BEGIN
     VALUES (@NewId, @UserId, @NewTokenHash, @NewExpiresAt);
   COMMIT TRANSACTION;
 
-  SELECT Id, UserId, TokenHash, ExpiresAt, CreatedAt
-  FROM RefreshTokens
-  WHERE Id = @NewId;
+  -- Joined to Users so the app layer can reissue an access token with fresh
+  -- claims (tenantId/role/email) without a second round trip.
+  SELECT
+    rt.Id, rt.UserId, rt.TokenHash, rt.ExpiresAt, rt.CreatedAt,
+    u.TenantId, u.Email, u.Role
+  FROM RefreshTokens rt
+  JOIN Users u ON u.Id = rt.UserId
+  WHERE rt.Id = @NewId;
 END

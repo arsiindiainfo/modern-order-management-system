@@ -33,6 +33,15 @@ export default tseslint.config(
     },
   },
   {
+    // Jest mock functions (jest.fn()) aren't real bound class methods, so
+    // `expect(mock.method).toHaveBeenCalledWith(...)` — a completely
+    // standard assertion — false-positives this rule in every spec file.
+    files: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
+  {
     // Architectural fence (plan §6.3): every read/write goes through
     // StoredProcedureRunner. No TypeORM entities/repositories/query
     // builder anywhere else in the app.
