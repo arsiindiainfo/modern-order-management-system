@@ -32,4 +32,30 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Architectural fence (plan §6.3): every read/write goes through
+    // StoredProcedureRunner. No TypeORM entities/repositories/query
+    // builder anywhere else in the app.
+    files: ['src/**/*.ts'],
+    ignores: ['src/database/**', 'src/common/database/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'typeorm',
+              importNames: ['Repository', 'EntityManager', 'getRepository', 'getManager'],
+              message: 'Only src/common/database (StoredProcedureRunner) may touch TypeORM repositories/entity managers — use StoredProcedureRunner instead.',
+            },
+            {
+              name: '@nestjs/typeorm',
+              importNames: ['InjectRepository'],
+              message: 'Only src/common/database (StoredProcedureRunner) may inject a TypeORM repository — use StoredProcedureRunner instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
