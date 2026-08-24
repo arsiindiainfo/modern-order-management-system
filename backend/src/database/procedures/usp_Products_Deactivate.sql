@@ -1,0 +1,15 @@
+CREATE OR ALTER PROCEDURE dbo.usp_Products_Deactivate
+  @TenantId UNIQUEIDENTIFIER,
+  @Id       UNIQUEIDENTIFIER
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF NOT EXISTS (SELECT 1 FROM Products WHERE Id = @Id AND TenantId = @TenantId)
+  BEGIN
+    RAISERROR('RESOURCE_NOT_FOUND', 16, 1);
+    RETURN;
+  END
+
+  UPDATE Products SET IsActive = 0 WHERE Id = @Id AND TenantId = @TenantId;
+END

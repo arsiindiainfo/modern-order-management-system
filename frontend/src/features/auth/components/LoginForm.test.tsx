@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { LoginForm } from './LoginForm';
 import { useAuth } from '../hooks/useAuth';
@@ -9,14 +10,27 @@ vi.mock('../hooks/useAuth');
 
 const mockedUseAuth = vi.mocked(useAuth);
 
-function setup(login: (email: string, password: string) => Promise<void>) {
+function mockAuth(login: (email: string, password: string) => Promise<void>) {
   mockedUseAuth.mockReturnValue({
     user: null,
     isLoading: false,
     login,
     logout: vi.fn(),
   });
-  return render(<LoginForm />);
+}
+
+function setup(login: (email: string, password: string) => Promise<void>) {
+  mockAuth(login);
+  return render(
+    <MemoryRouter>
+      <LoginForm />
+    </MemoryRouter>,
+  );
+}
+
+function LocationDisplay() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
 }
 
 describe('LoginForm', () => {
@@ -45,6 +59,23 @@ describe('LoginForm', () => {
     await user.tab();
 
     expect(await screen.findByText(/enter a valid email address/i)).toBeInTheDocument();
+  });
+
+  it('navigates to / after a successful login', async () => {
+    const user = userEvent.setup();
+    mockAuth(vi.fn().mockResolvedValue(undefined));
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LoginForm />
+        <LocationDisplay />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'correct-password');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'));
   });
 
   it('shows a generic alert when login rejects with INVALID_CREDENTIALS', async () => {

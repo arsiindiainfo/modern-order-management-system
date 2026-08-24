@@ -43,7 +43,23 @@ apiClient.interceptors.request.use((config) => {
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function performSilentRefresh(): Promise<string | null> {
+/**
+ * Single-flight silent refresh, shared by the 401-retry interceptor below
+ * and AuthProvider's session-restore-on-mount. Consolidating both callers
+ * onto the same in-flight promise matters because React's StrictMode
+ * double-invokes effects in development — without this, two concurrent
+ * restoreSession() calls would each send the same (soon-to-be-rotated)
+ * refresh token, and the second one would look like a replay attack to
+ * usp_RefreshTokens_Rotate's reuse-detection, revoking the whole session.
+ */
+export function performSilentRefresh(): Promise<string | null> {
+  refreshPromise ??= runSilentRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function runSilentRefresh(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
@@ -72,10 +88,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && original && !original._retry && !isExempt) {
       original._retry = true;
-      refreshPromise ??= performSilentRefresh().finally(() => {
-        refreshPromise = null;
-      });
-      const newToken = await refreshPromise;
+      const newToken = await performSilentRefresh();
       if (newToken) {
         original.headers = { ...original.headers, Authorization: `Bearer ${newToken}` };
         return apiClient(original);

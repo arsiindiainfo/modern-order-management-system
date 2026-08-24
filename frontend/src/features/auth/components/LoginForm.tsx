@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Alert, Box, Button, TextField, Typography } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import type { AppApiError } from '../../../lib/apiClient';
 import { useAuth } from '../hooks/useAuth';
 
@@ -15,6 +16,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -30,6 +32,7 @@ export function LoginForm() {
     setFormError(null);
     try {
       await login(values.email, values.password);
+      void navigate('/', { replace: true });
     } catch (err) {
       const apiError = err as AppApiError;
       if (apiError.fields?.length) {
