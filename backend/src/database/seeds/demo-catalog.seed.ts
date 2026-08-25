@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import * as mssql from 'mssql';
 import { buildDataSourceOptions } from '../data-source';
 import { StoredProcedureRunner } from '../../common/database/stored-procedure-runner.service';
 
@@ -208,8 +209,9 @@ async function main() {
     return;
   }
 
+  const customerIds: string[] = [];
   for (const customer of CUSTOMERS) {
-    await runner.execute('usp_Customers_Create', [
+    const [row] = await runner.execute<{ Id: string }>('usp_Customers_Create', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
       { name: 'Name', value: customer.name },
       { name: 'Email', value: customer.email },
@@ -220,11 +222,13 @@ async function main() {
       },
       { name: 'ShippingAddress', value: null },
     ]);
+    customerIds.push(row.Id);
   }
   console.log(`Seeded ${CUSTOMERS.length} customers.`);
 
+  const productIds: string[] = [];
   for (const product of PRODUCTS) {
-    await runner.execute('usp_Products_Create', [
+    const [row] = await runner.execute<{ Id: string }>('usp_Products_Create', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
       { name: 'Sku', value: product.sku },
       { name: 'Name', value: product.name },
@@ -238,8 +242,75 @@ async function main() {
       { name: 'InitialStock', value: product.initialStock },
       { name: 'ReorderLevel', value: product.reorderLevel },
     ]);
+    productIds.push(row.Id);
   }
   console.log(`Seeded ${PRODUCTS.length} products (with inventory).`);
+
+  const [demoUser] = await dataSource.query<{ Id: string }[]>(
+    `SELECT Id FROM Users WHERE TenantId = @0 AND Email = @1`,
+    [tenantId, DEMO_USER_EMAIL],
+  );
+
+  const DEMO_ORDERS: {
+    customerIndex: number;
+    lines: { productIndex: number; quantity: number }[];
+    hold?: boolean;
+  }[] = [
+    {
+      customerIndex: 0,
+      lines: [
+        { productIndex: 0, quantity: 2 },
+        { productIndex: 5, quantity: 3 },
+      ],
+    },
+    { customerIndex: 1, lines: [{ productIndex: 2, quantity: 1 }] },
+    {
+      customerIndex: 2,
+      lines: [
+        { productIndex: 9, quantity: 1 },
+        { productIndex: 8, quantity: 4 },
+      ],
+      hold: true,
+    },
+  ];
+
+  for (const order of DEMO_ORDERS) {
+    const linesTable = new mssql.Table('dbo.OrderLineInput');
+    linesTable.columns.add('ProductId', mssql.UniqueIdentifier);
+    linesTable.columns.add('Quantity', mssql.Int);
+    for (const line of order.lines) {
+      linesTable.rows.add(productIds[line.productIndex], line.quantity);
+    }
+
+    const [created] = await runner.execute<{ Id: string; Version: number }>(
+      'usp_Orders_Create',
+      [
+        { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+        {
+          name: 'CustomerId',
+          value: customerIds[order.customerIndex],
+          type: 'uniqueidentifier',
+        },
+        { name: 'Lines', value: linesTable },
+      ],
+    );
+
+    if (order.hold) {
+      await runner.execute('usp_Orders_UpdateStatus', [
+        { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+        { name: 'OrderId', value: created.Id, type: 'uniqueidentifier' },
+        { name: 'ExpectedVersion', value: created.Version },
+        { name: 'ToStatus', value: 'ON_HOLD' },
+        {
+          name: 'Note',
+          value: 'Awaiting customer confirmation on substitute item',
+        },
+      ]);
+    }
+  }
+  console.log(`Seeded ${DEMO_ORDERS.length} orders.`);
 
   await dataSource.destroy();
   console.log('Demo catalog seed complete.');

@@ -12,6 +12,7 @@ import { StoredProcedureRunnerModule } from './common/database/stored-procedure-
 import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ProductsModule } from './modules/products/products.module';
+import { OrdersModule } from './modules/orders/orders.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import { validationExceptionFactory } from './common/pipes/validation-exception-factory';
@@ -33,6 +34,7 @@ import { TraceIdMiddleware } from './common/middleware/trace-id.middleware';
     AuthModule,
     CustomersModule,
     ProductsModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

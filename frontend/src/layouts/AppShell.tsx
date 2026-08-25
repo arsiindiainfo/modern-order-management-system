@@ -18,6 +18,7 @@ import {
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: DashboardOutlinedIcon },
   { label: 'Customers', path: '/customers', icon: PeopleOutlinedIcon },
   { label: 'Products', path: '/products', icon: Inventory2OutlinedIcon },
+  { label: 'Orders', path: '/orders', icon: ReceiptLongOutlinedIcon },
 ];
 
 // No BrandFooter here — §29 branding is explicitly deferred (see the

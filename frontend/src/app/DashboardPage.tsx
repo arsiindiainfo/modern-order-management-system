@@ -1,12 +1,13 @@
 import { Box, Card, CardActionArea, CardContent, Stack, Typography } from '@mui/material';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
 
-// Placeholder proving the auth chain end-to-end and pointing at the two
-// catalog features — real dashboard widgets (order volume, etc.) arrive
-// once Orders exist in Phase 3.
+// Placeholder proving the auth chain end-to-end and pointing at the three
+// core features — real dashboard widgets (order volume, revenue, etc.)
+// are a later-phase concern, not part of §27's Phase 3 scope.
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +48,22 @@ export function DashboardPage() {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Manage your catalog and stock levels
+                </Typography>
+              </Box>
+            </CardContent>
+          </CardActionArea>
+        </Card>
+
+        <Card variant="outlined" sx={{ flex: 1 }}>
+          <CardActionArea onClick={() => void navigate('/orders')} sx={{ p: 1 }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ReceiptLongOutlinedIcon color="primary" fontSize="large" />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Orders
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Create orders and track their status
                 </Typography>
               </Box>
             </CardContent>

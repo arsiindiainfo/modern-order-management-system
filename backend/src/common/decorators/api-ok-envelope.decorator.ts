@@ -22,6 +22,21 @@ export function ApiOkEnvelope(model: Type<unknown>) {
   );
 }
 
+/** Same idea as ApiOkEnvelope, for a plain (non-paginated) array response — e.g. GET /orders/:id/history. */
+export function ApiOkArrayEnvelope(model: Type<unknown>) {
+  return applyDecorators(
+    ApiExtraModels(model),
+    ApiOkResponse({
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: { type: 'array', items: { $ref: getSchemaPath(model) } },
+        },
+      },
+    }),
+  );
+}
+
 /** Same idea as ApiOkEnvelope, for a paginated list (§12.2/§22). */
 export function ApiOkPaginatedEnvelope(model: Type<unknown>) {
   return applyDecorators(

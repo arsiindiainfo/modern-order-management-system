@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, MssqlParameter } from 'typeorm';
+import * as mssql from 'mssql';
 
 /**
  * Every legitimate SQL Server identifier NestJS/TypeORM will ever be asked
@@ -76,6 +77,14 @@ const DynamicMssqlParameter = MssqlParameter as unknown as new (
   ...typeParams: number[]
 ) => MssqlParameter;
 
+// The driver internals executeMultiple() reaches into — the same ones
+// TypeORM's own SqlServerQueryRunner.query() calls under the hood
+// (confirmed against node_modules/typeorm/driver/sqlserver/SqlServerDriver.js),
+// just without discarding every recordset past the first.
+interface MssqlDriverInternals {
+  obtainMasterConnection(): Promise<mssql.ConnectionPool>;
+}
+
 /**
  * The only class in this app allowed to EXEC a stored procedure — every
  * business read/write goes through here (see the plan's §6.3 decision).
@@ -122,6 +131,51 @@ export class StoredProcedureRunner {
         `EXEC ${procedureName} (${Date.now() - startedAt}ms)`,
         // never log `params`/`values` here — passwords and PII pass through
         // this runner from Phase 1 onward.
+      );
+    }
+  }
+
+  /**
+   * The one narrow exception to this class's single-result-set contract —
+   * built for usp_Orders_GetById, which documents (§6.4) a second SELECT
+   * (the joined OrderLines) that execute()/dataSource.query() would
+   * silently drop. Bypasses TypeORM's query() and talks to the underlying
+   * node-mssql pool directly, returning every recordset.
+   *
+   * Only supports 'uniqueidentifier' typed params so far, since that's all
+   * this method's one caller needs — extend the type handling below if a
+   * future caller needs another type.
+   */
+  async executeMultiple<T = Record<string, unknown>>(
+    procedureName: string,
+    params: StoredProcedureParam[] = [],
+  ): Promise<T[][]> {
+    assertValidIdentifier(procedureName, 'procedure name');
+    params.forEach((p) => assertValidIdentifier(p.name, 'parameter name'));
+
+    const driver = this.dataSource.driver as unknown as MssqlDriverInternals;
+    const pool = await driver.obtainMasterConnection();
+    const request = new mssql.Request(pool);
+
+    params.forEach((p) => {
+      if (!p.type) {
+        request.input(p.name, p.value);
+      } else if (p.type === 'uniqueidentifier') {
+        request.input(p.name, mssql.UniqueIdentifier, p.value);
+      } else {
+        throw new Error(
+          `executeMultiple() doesn't support the '${p.type}' param type yet (param @${p.name}) — extend the type handling in stored-procedure-runner.service.ts.`,
+        );
+      }
+    });
+
+    const startedAt = Date.now();
+    try {
+      const result = await request.execute(procedureName);
+      return result.recordsets as unknown as T[][];
+    } finally {
+      this.logger.debug(
+        `EXEC ${procedureName} multi (${Date.now() - startedAt}ms)`,
       );
     }
   }
