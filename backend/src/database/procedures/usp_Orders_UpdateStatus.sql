@@ -55,6 +55,9 @@ BEGIN
     INSERT INTO OrderStatusHistory (Id, OrderId, FromStatus, ToStatus, ChangedByUserId, Note)
     VALUES (NEWID(), @OrderId, @FromStatus, @ToStatus, @ActorUserId, @Note);
 
+    INSERT INTO AuditLogs (Id, TenantId, EntityName, EntityId, Action, ChangedByUserId)
+    VALUES (NEWID(), @TenantId, 'Order', @OrderId, 'UPDATE', @ActorUserId);
+
     COMMIT TRANSACTION;
   END TRY
   BEGIN CATCH

@@ -57,12 +57,14 @@ export class CustomersRepository {
 
   async create(
     tenantId: string,
+    actorUserId: string,
     input: CustomerWriteInput,
   ): Promise<CustomerRow> {
     const rows = await this.runner.execute<CustomerRow>(
       'usp_Customers_Create',
       [
         { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
         { name: 'Name', value: input.name },
         { name: 'Email', value: input.email },
         { name: 'Phone', value: input.phone ?? null },
@@ -81,6 +83,7 @@ export class CustomersRepository {
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     input: CustomerWriteInput,
   ): Promise<CustomerRow> {
@@ -88,6 +91,7 @@ export class CustomersRepository {
       'usp_Customers_Update',
       [
         { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
         { name: 'Id', value: id, type: 'uniqueidentifier' },
         { name: 'Name', value: input.name },
         { name: 'Email', value: input.email },
@@ -105,9 +109,14 @@ export class CustomersRepository {
     return rows[0];
   }
 
-  async deactivate(tenantId: string, id: string): Promise<void> {
+  async deactivate(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+  ): Promise<void> {
     await this.runner.execute('usp_Customers_Deactivate', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'Id', value: id, type: 'uniqueidentifier' },
     ]);
   }

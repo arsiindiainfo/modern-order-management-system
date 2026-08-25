@@ -57,7 +57,40 @@ export interface OrderHistoryEntry {
 
 export interface CreateOrderFormValues {
   customerId: string;
+  discountCode?: string;
   lines: { productId: string; quantity: number }[];
+}
+
+export interface RecordPaymentValues {
+  provider: string;
+  amount: number;
+  currency: string;
+  transactionRef: string;
+}
+
+export interface RecordShipmentValues {
+  version: number;
+  carrier: string;
+  trackingNumber: string;
+}
+
+export interface OrderRef {
+  id: string;
+  status: OrderStatus;
+  version: number;
+}
+
+export interface PaymentResult {
+  paymentId: string;
+  status: string;
+  order: OrderRef;
+}
+
+export interface ShipmentResult {
+  shipmentId: string;
+  carrier: string;
+  trackingNumber: string;
+  order: OrderRef;
 }
 
 export interface HoldOrderValues {

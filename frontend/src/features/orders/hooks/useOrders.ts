@@ -6,6 +6,8 @@ import type {
   OrderDetail,
   OrderStatus,
   OrderStatusActionValues,
+  RecordPaymentValues,
+  RecordShipmentValues,
 } from '../types';
 
 const ORDERS_KEY = 'orders';
@@ -97,4 +99,34 @@ export function useResumeOrder(id: string) {
 
 export function useCancelOrder(id: string) {
   return useOrderStatusMutation<OrderStatusActionValues>(id, 'CANCELLED', ordersService.cancel);
+}
+
+/**
+ * Payment/shipment aren't a fixed-target status flip (payment only
+ * advances status once fully paid; shipment always requires its own
+ * @ExpectedVersion) — no optimistic update here, §21 only calls for that
+ * on hold/resume/cancel. Just invalidate on settle.
+ */
+export function useRecordPayment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (values: RecordPaymentValues) => ordersService.recordPayment(id, values),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: [ORDERS_KEY, id] });
+      void queryClient.invalidateQueries({ queryKey: [ORDERS_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ORDER_HISTORY_KEY, id] });
+    },
+  });
+}
+
+export function useRecordShipment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (values: RecordShipmentValues) => ordersService.recordShipment(id, values),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: [ORDERS_KEY, id] });
+      void queryClient.invalidateQueries({ queryKey: [ORDERS_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ORDER_HISTORY_KEY, id] });
+    },
+  });
 }

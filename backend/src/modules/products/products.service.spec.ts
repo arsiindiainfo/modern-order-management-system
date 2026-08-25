@@ -133,13 +133,19 @@ describe('ProductsService', () => {
         buildInventoryRow({ QuantityOnHand: 530, QuantityAvailable: 494 }),
       );
 
-      const result = await service.adjustInventory('tenant-1', 'prod-1', {
-        quantityDelta: 50,
-        reason: 'Received shipment PO-2026-0042',
-      });
+      const result = await service.adjustInventory(
+        'tenant-1',
+        'user-1',
+        'prod-1',
+        {
+          quantityDelta: 50,
+          reason: 'Received shipment PO-2026-0042',
+        },
+      );
 
       expect(repository.adjustInventory).toHaveBeenCalledWith(
         'tenant-1',
+        'user-1',
         'prod-1',
         50,
         'Received shipment PO-2026-0042',
@@ -151,7 +157,7 @@ describe('ProductsService', () => {
       repository.adjustInventory.mockResolvedValue(undefined);
 
       await expect(
-        service.adjustInventory('tenant-1', 'nonexistent', {
+        service.adjustInventory('tenant-1', 'user-1', 'nonexistent', {
           quantityDelta: 1,
           reason: 'x',
         }),

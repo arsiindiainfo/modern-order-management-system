@@ -28,6 +28,7 @@ export const ORDER_STATE_MACHINE: readonly OrderTransition[] = [
   { from: 'PENDING', to: 'CONFIRMED' },
   { from: 'CONFIRMED', to: 'PROCESSING' },
   { from: 'PROCESSING', to: 'SHIPPED' },
+  { from: 'CONFIRMED', to: 'SHIPPED' },
   { from: 'SHIPPED', to: 'DELIVERED' },
   { from: 'PENDING', to: 'ON_HOLD' },
   { from: 'CONFIRMED', to: 'ON_HOLD' },

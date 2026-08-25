@@ -16,6 +16,7 @@ import {
   ApiOkEnvelope,
   ApiOkPaginatedEnvelope,
 } from '../../common/decorators/api-ok-envelope.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { TenantId } from '../../common/decorators/tenant-id.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,6 +24,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantScopeGuard } from '../../common/guards/tenant-scope.guard';
 import { ParsePaginationPipe } from '../../common/pipes/parse-pagination.pipe';
 import type { PaginationQuery } from '../../common/pipes/parse-pagination.pipe';
+import type { AuthUser } from '../../common/types/auth-user.interface';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CustomerResponseDto } from './dto/customer-response.dto';
@@ -52,8 +54,12 @@ export class CustomersController {
   @Post()
   @Roles('TENANT_ADMIN', 'MANAGER')
   @ApiOkEnvelope(CustomerResponseDto)
-  create(@TenantId() tenantId: string, @Body() dto: CreateCustomerDto) {
-    return this.customersService.create(tenantId, dto);
+  create(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateCustomerDto,
+  ) {
+    return this.customersService.create(tenantId, user.userId, dto);
   }
 
   @Put(':id')
@@ -61,17 +67,22 @@ export class CustomersController {
   @ApiOkEnvelope(CustomerResponseDto)
   update(
     @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: UpdateCustomerDto,
   ) {
-    return this.customersService.update(tenantId, id, dto);
+    return this.customersService.update(tenantId, user.userId, id, dto);
   }
 
   @Delete(':id')
   @Roles('TENANT_ADMIN')
   @HttpCode(HttpStatus.OK)
-  async deactivate(@TenantId() tenantId: string, @Param('id') id: string) {
-    await this.customersService.deactivate(tenantId, id);
+  async deactivate(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    await this.customersService.deactivate(tenantId, user.userId, id);
     return { deactivated: true };
   }
 }

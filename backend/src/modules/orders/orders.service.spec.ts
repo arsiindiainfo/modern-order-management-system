@@ -43,6 +43,8 @@ describe('OrdersService', () => {
             create: jest.fn(),
             update: jest.fn(),
             updateStatus: jest.fn(),
+            recordPayment: jest.fn(),
+            recordShipment: jest.fn(),
             getHistory: jest.fn(),
           },
         },
@@ -142,9 +144,30 @@ describe('OrdersService', () => {
         'user-1',
         'customer-1',
         [{ productId: 'product-1', quantity: 2 }],
+        undefined,
       );
       expect(result.orderNumber).toBe('ORD-2026-000001');
       expect(result.grandTotal).toBe(25.98);
+    });
+
+    it('passes the discount code through when supplied', async () => {
+      repository.create.mockResolvedValue(
+        buildOrderRow({ DiscountTotal: 2.6, GrandTotal: 23.38 }),
+      );
+
+      await service.create('tenant-1', 'user-1', {
+        customerId: 'customer-1',
+        lines: [{ productId: 'product-1', quantity: 2 }],
+        discountCode: 'WELCOME10',
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'customer-1',
+        [{ productId: 'product-1', quantity: 2 }],
+        'WELCOME10',
+      );
     });
   });
 
@@ -201,6 +224,84 @@ describe('OrdersService', () => {
         'CANCELLED',
         undefined,
       );
+    });
+  });
+
+  describe('recordPayment', () => {
+    it('maps the combined payment/order result', async () => {
+      repository.recordPayment.mockResolvedValue({
+        PaymentId: 'payment-1',
+        PaymentStatus: 'CAPTURED',
+        OrderId: 'order-1',
+        OrderStatus: 'CONFIRMED',
+        OrderVersion: 2,
+      });
+
+      const result = await service.recordPayment(
+        'tenant-1',
+        'user-1',
+        'order-1',
+        {
+          provider: 'STRIPE',
+          amount: 25.98,
+          currency: 'USD',
+          transactionRef: 'pi_123',
+        },
+      );
+
+      expect(repository.recordPayment).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'order-1',
+        'STRIPE',
+        25.98,
+        'USD',
+        'pi_123',
+      );
+      expect(result).toEqual({
+        paymentId: 'payment-1',
+        status: 'CAPTURED',
+        order: { id: 'order-1', status: 'CONFIRMED', version: 2 },
+      });
+    });
+  });
+
+  describe('recordShipment', () => {
+    it('maps the combined shipment/order result', async () => {
+      repository.recordShipment.mockResolvedValue({
+        ShipmentId: 'shipment-1',
+        Carrier: 'UPS',
+        TrackingNumber: '1Z999',
+        OrderId: 'order-1',
+        OrderStatus: 'SHIPPED',
+        OrderVersion: 3,
+      });
+
+      const result = await service.recordShipment(
+        'tenant-1',
+        'user-1',
+        'order-1',
+        {
+          version: 2,
+          carrier: 'UPS',
+          trackingNumber: '1Z999',
+        },
+      );
+
+      expect(repository.recordShipment).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'order-1',
+        2,
+        'UPS',
+        '1Z999',
+      );
+      expect(result).toEqual({
+        shipmentId: 'shipment-1',
+        carrier: 'UPS',
+        trackingNumber: '1Z999',
+        order: { id: 'order-1', status: 'SHIPPED', version: 3 },
+      });
     });
   });
 

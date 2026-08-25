@@ -42,10 +42,12 @@ export class CustomersService {
 
   async create(
     tenantId: string,
+    actorUserId: string,
     dto: CreateCustomerDto,
   ): Promise<CustomerResponseDto> {
     const row = await this.customersRepository.create(
       tenantId,
+      actorUserId,
       toWriteInput(dto),
     );
     return toCustomerResponseDto(row);
@@ -53,19 +55,25 @@ export class CustomersService {
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     dto: UpdateCustomerDto,
   ): Promise<CustomerResponseDto> {
     const row = await this.customersRepository.update(
       tenantId,
+      actorUserId,
       id,
       toWriteInput(dto),
     );
     return toCustomerResponseDto(row);
   }
 
-  async deactivate(tenantId: string, id: string): Promise<void> {
-    await this.customersRepository.deactivate(tenantId, id);
+  async deactivate(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+  ): Promise<void> {
+    await this.customersRepository.deactivate(tenantId, actorUserId, id);
   }
 }
 

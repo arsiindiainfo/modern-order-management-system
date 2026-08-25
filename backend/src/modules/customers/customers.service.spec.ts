@@ -110,15 +110,15 @@ describe('CustomersService', () => {
   });
 
   describe('create', () => {
-    it('passes the DTO through to the repository and maps the result', async () => {
+    it('passes the DTO and actor through to the repository and maps the result', async () => {
       repository.create.mockResolvedValue(buildRow());
 
-      const result = await service.create('tenant-1', {
+      const result = await service.create('tenant-1', 'user-1', {
         name: 'Blue Sky Retail',
         email: 'orders@blueskyretail.com',
       });
 
-      expect(repository.create).toHaveBeenCalledWith('tenant-1', {
+      expect(repository.create).toHaveBeenCalledWith('tenant-1', 'user-1', {
         name: 'Blue Sky Retail',
         email: 'orders@blueskyretail.com',
         phone: undefined,
@@ -130,9 +130,13 @@ describe('CustomersService', () => {
   });
 
   describe('deactivate', () => {
-    it('delegates to the repository', async () => {
-      await service.deactivate('tenant-1', 'cust-1');
-      expect(repository.deactivate).toHaveBeenCalledWith('tenant-1', 'cust-1');
+    it('delegates to the repository with the acting user', async () => {
+      await service.deactivate('tenant-1', 'user-1', 'cust-1');
+      expect(repository.deactivate).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'cust-1',
+      );
     });
   });
 });

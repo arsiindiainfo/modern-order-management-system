@@ -44,23 +44,38 @@ export class ProductsService {
 
   async create(
     tenantId: string,
+    actorUserId: string,
     dto: CreateProductDto,
   ): Promise<ProductResponseDto> {
-    const row = await this.productsRepository.create(tenantId, dto);
+    const row = await this.productsRepository.create(
+      tenantId,
+      actorUserId,
+      dto,
+    );
     return toProductResponseDto(row);
   }
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     dto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    const row = await this.productsRepository.update(tenantId, id, dto);
+    const row = await this.productsRepository.update(
+      tenantId,
+      actorUserId,
+      id,
+      dto,
+    );
     return toProductResponseDto(row);
   }
 
-  async deactivate(tenantId: string, id: string): Promise<void> {
-    await this.productsRepository.deactivate(tenantId, id);
+  async deactivate(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+  ): Promise<void> {
+    await this.productsRepository.deactivate(tenantId, actorUserId, id);
   }
 
   async getInventory(
@@ -76,11 +91,13 @@ export class ProductsService {
 
   async adjustInventory(
     tenantId: string,
+    actorUserId: string,
     productId: string,
     dto: AdjustInventoryDto,
   ): Promise<InventoryResponseDto> {
     const row = await this.productsRepository.adjustInventory(
       tenantId,
+      actorUserId,
       productId,
       dto.quantityDelta,
       dto.reason,

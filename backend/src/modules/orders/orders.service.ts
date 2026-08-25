@@ -11,6 +11,10 @@ import { OrderHistoryEntryResponseDto } from './dto/order-history-entry-response
 import { OrderListItemResponseDto } from './dto/order-list-item-response.dto';
 import { OrderStatusActionDto } from './dto/order-status-action.dto';
 import { OrderSummaryResponseDto } from './dto/order-summary-response.dto';
+import { PaymentResultResponseDto } from './dto/payment-result-response.dto';
+import { RecordPaymentDto } from './dto/record-payment.dto';
+import { RecordShipmentDto } from './dto/record-shipment.dto';
+import { ShipmentResultResponseDto } from './dto/shipment-result-response.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import {
   OrderDetailHeaderRow,
@@ -21,6 +25,8 @@ import {
   OrderRow,
   OrdersListQuery,
   OrdersRepository,
+  PaymentResultRow,
+  ShipmentResultRow,
 } from './orders.repository';
 
 @Injectable()
@@ -58,17 +64,20 @@ export class OrdersService {
       actorUserId,
       dto.customerId,
       dto.lines,
+      dto.discountCode,
     );
     return toOrderSummaryResponseDto(row);
   }
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     dto: UpdateOrderDto,
   ): Promise<OrderSummaryResponseDto> {
     const row = await this.ordersRepository.update(
       tenantId,
+      actorUserId,
       id,
       dto.version,
       dto.customerId,
@@ -136,6 +145,41 @@ export class OrdersService {
     return toOrderSummaryResponseDto(row as OrderRow);
   }
 
+  async recordPayment(
+    tenantId: string,
+    actorUserId: string,
+    orderId: string,
+    dto: RecordPaymentDto,
+  ): Promise<PaymentResultResponseDto> {
+    const row = await this.ordersRepository.recordPayment(
+      tenantId,
+      actorUserId,
+      orderId,
+      dto.provider,
+      dto.amount,
+      dto.currency,
+      dto.transactionRef,
+    );
+    return toPaymentResultResponseDto(row);
+  }
+
+  async recordShipment(
+    tenantId: string,
+    actorUserId: string,
+    orderId: string,
+    dto: RecordShipmentDto,
+  ): Promise<ShipmentResultResponseDto> {
+    const row = await this.ordersRepository.recordShipment(
+      tenantId,
+      actorUserId,
+      orderId,
+      dto.version,
+      dto.carrier,
+      dto.trackingNumber,
+    );
+    return toShipmentResultResponseDto(row);
+  }
+
   async getHistory(
     tenantId: string,
     id: string,
@@ -192,6 +236,35 @@ function toOrderDetailResponseDto(
       quantity: line.Quantity,
       lineTotal: Number(line.LineTotal),
     })),
+  };
+}
+
+function toPaymentResultResponseDto(
+  row: PaymentResultRow,
+): PaymentResultResponseDto {
+  return {
+    paymentId: row.PaymentId,
+    status: row.PaymentStatus,
+    order: {
+      id: row.OrderId,
+      status: row.OrderStatus,
+      version: row.OrderVersion,
+    },
+  };
+}
+
+function toShipmentResultResponseDto(
+  row: ShipmentResultRow,
+): ShipmentResultResponseDto {
+  return {
+    shipmentId: row.ShipmentId,
+    carrier: row.Carrier,
+    trackingNumber: row.TrackingNumber,
+    order: {
+      id: row.OrderId,
+      status: row.OrderStatus,
+      version: row.OrderVersion,
+    },
   };
 }
 

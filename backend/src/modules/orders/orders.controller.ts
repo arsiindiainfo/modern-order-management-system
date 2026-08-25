@@ -31,6 +31,10 @@ import { OrderHistoryEntryResponseDto } from './dto/order-history-entry-response
 import { OrderListItemResponseDto } from './dto/order-list-item-response.dto';
 import { OrderStatusActionDto } from './dto/order-status-action.dto';
 import { OrderSummaryResponseDto } from './dto/order-summary-response.dto';
+import { PaymentResultResponseDto } from './dto/payment-result-response.dto';
+import { RecordPaymentDto } from './dto/record-payment.dto';
+import { RecordShipmentDto } from './dto/record-shipment.dto';
+import { ShipmentResultResponseDto } from './dto/shipment-result-response.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import type { OrdersListQuery } from './orders.repository';
 import { OrdersService } from './orders.service';
@@ -56,6 +60,30 @@ export class OrdersController {
     return this.ordersService.getById(tenantId, id);
   }
 
+  @Post(':id/payment')
+  @Roles('TENANT_ADMIN', 'MANAGER')
+  @ApiOkEnvelope(PaymentResultResponseDto)
+  recordPayment(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: RecordPaymentDto,
+  ) {
+    return this.ordersService.recordPayment(tenantId, user.userId, id, dto);
+  }
+
+  @Post(':id/ship')
+  @Roles('TENANT_ADMIN', 'MANAGER')
+  @ApiOkEnvelope(ShipmentResultResponseDto)
+  recordShipment(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: RecordShipmentDto,
+  ) {
+    return this.ordersService.recordShipment(tenantId, user.userId, id, dto);
+  }
+
   @Get(':id/history')
   @ApiOkArrayEnvelope(OrderHistoryEntryResponseDto)
   getHistory(@TenantId() tenantId: string, @Param('id') id: string) {
@@ -78,10 +106,11 @@ export class OrdersController {
   @ApiOkEnvelope(OrderSummaryResponseDto)
   update(
     @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: UpdateOrderDto,
   ) {
-    return this.ordersService.update(tenantId, id, dto);
+    return this.ordersService.update(tenantId, user.userId, id, dto);
   }
 
   @Post(':id/hold')

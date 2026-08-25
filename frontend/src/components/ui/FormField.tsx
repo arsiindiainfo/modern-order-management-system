@@ -1,11 +1,20 @@
 import { TextField, type TextFieldProps } from '@mui/material';
-import type { FieldError, FieldErrors, FieldValues, Path, UseFormRegister } from 'react-hook-form';
+import type {
+  FieldError,
+  FieldErrors,
+  FieldValues,
+  Path,
+  RegisterOptions,
+  UseFormRegister,
+} from 'react-hook-form';
 
 export interface FormFieldProps<TFieldValues extends FieldValues>
   extends Omit<TextFieldProps, 'error' | 'name'> {
   name: Path<TFieldValues>;
   register: UseFormRegister<TFieldValues>;
   errors: FieldErrors<TFieldValues>;
+  /** e.g. `{ valueAsNumber: true }` for a numeric field backed by a plain (non-coerced) zod schema. */
+  registerOptions?: RegisterOptions<TFieldValues, Path<TFieldValues>>;
 }
 
 /** Resolves a possibly-dotted path (e.g. "billingAddress.line1") against RHF's nested FieldErrors tree. */
@@ -27,10 +36,18 @@ export function FormField<TFieldValues extends FieldValues>({
   register,
   errors,
   helperText,
+  registerOptions,
   ...rest
 }: FormFieldProps<TFieldValues>) {
   const error = getNestedError(errors, name);
   const message = typeof error?.message === 'string' ? error.message : undefined;
 
-  return <TextField error={!!error} helperText={message ?? helperText} {...register(name)} {...rest} />;
+  return (
+    <TextField
+      error={!!error}
+      helperText={message ?? helperText}
+      {...register(name, registerOptions)}
+      {...rest}
+    />
+  );
 }

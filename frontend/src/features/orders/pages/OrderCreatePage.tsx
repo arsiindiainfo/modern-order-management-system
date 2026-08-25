@@ -8,6 +8,8 @@ import { useCustomers } from '../../customers/hooks/useCustomers';
 import type { Customer } from '../../customers/types';
 import { useToast } from '../../../components/ui/useToast';
 import type { AppApiError } from '../../../lib/apiClient';
+import { FormField } from '../../../components/ui/FormField';
+import { useValidateDiscount } from '../../discounts/hooks/useDiscounts';
 import { OrderLineItemsEditor, type OrderLineItemsFormValues } from '../components/OrderLineItemsEditor';
 import { useCreateOrder } from '../hooks/useOrders';
 
@@ -20,6 +22,7 @@ const lineSchema = z.object({
 
 const createOrderSchema = z.object({
   customerId: z.string().min(1, 'Select a customer'),
+  discountCode: z.string().optional(),
   lines: z.array(lineSchema).min(1, 'Add at least one line item'),
 });
 
@@ -40,6 +43,9 @@ export function OrderCreatePage() {
   });
   const customerOptions = customersData?.data ?? [];
   const createMutation = useCreateOrder();
+  const validateDiscountMutation = useValidateDiscount();
+  const [discountPreview, setDiscountPreview] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
 
   const {
     control,
@@ -53,17 +59,33 @@ export function OrderCreatePage() {
     mode: 'onChange',
     defaultValues: {
       customerId: '',
+      discountCode: '',
       lines: [{ productId: '', productLabel: '', unitPrice: 0, quantity: 1 }],
     },
   });
 
   const lines = watch('lines');
+  const subtotal = lines.reduce((sum, line) => sum + (Number(line.unitPrice) || 0) * (Number(line.quantity) || 0), 0);
+
+  const checkDiscountCode = async () => {
+    const code = (watch('discountCode') ?? '').trim();
+    setDiscountError(null);
+    setDiscountPreview(null);
+    if (!code || subtotal <= 0) return;
+    try {
+      const result = await validateDiscountMutation.mutateAsync({ code, subtotal });
+      setDiscountPreview({ code: result.code, discountAmount: result.discountAmount });
+    } catch (err) {
+      setDiscountError((err as AppApiError).message ?? 'This discount code cannot be applied.');
+    }
+  };
 
   const submit = handleSubmit(async (values) => {
     setFormError(null);
     try {
       const order = await createMutation.mutateAsync({
         customerId: values.customerId,
+        discountCode: values.discountCode?.trim() || undefined,
         lines: values.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
       });
       showToast(`Order ${order.orderNumber} created.`, 'success');
@@ -123,6 +145,24 @@ export function OrderCreatePage() {
                 errors={errors}
                 lines={lines}
               />
+
+              <Box>
+                <FormField
+                  name="discountCode"
+                  register={register}
+                  registerOptions={{ onBlur: () => void checkDiscountCode() }}
+                  errors={errors}
+                  label="Discount code"
+                  placeholder="Optional — e.g. WELCOME10"
+                  fullWidth
+                  helperText={
+                    discountError ??
+                    (discountPreview
+                      ? `${discountPreview.code} applies -$${discountPreview.discountAmount.toFixed(2)}`
+                      : undefined)
+                  }
+                />
+              </Box>
 
               <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end' }}>
                 <Button onClick={() => void navigate('/orders')} disabled={isSubmitting}>

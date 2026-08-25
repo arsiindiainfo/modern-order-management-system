@@ -63,10 +63,12 @@ export class ProductsRepository {
 
   async create(
     tenantId: string,
+    actorUserId: string,
     input: ProductCreateInput,
   ): Promise<ProductRow> {
     const rows = await this.runner.execute<ProductRow>('usp_Products_Create', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'Sku', value: input.sku },
       { name: 'Name', value: input.name },
       {
@@ -84,11 +86,13 @@ export class ProductsRepository {
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     input: ProductWriteInput,
   ): Promise<ProductRow> {
     const rows = await this.runner.execute<ProductRow>('usp_Products_Update', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'Id', value: id, type: 'uniqueidentifier' },
       { name: 'Name', value: input.name },
       {
@@ -102,9 +106,14 @@ export class ProductsRepository {
     return rows[0];
   }
 
-  async deactivate(tenantId: string, id: string): Promise<void> {
+  async deactivate(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+  ): Promise<void> {
     await this.runner.execute('usp_Products_Deactivate', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'Id', value: id, type: 'uniqueidentifier' },
     ]);
   }
@@ -125,6 +134,7 @@ export class ProductsRepository {
 
   async adjustInventory(
     tenantId: string,
+    actorUserId: string,
     productId: string,
     quantityDelta: number,
     reason: string,
@@ -133,6 +143,7 @@ export class ProductsRepository {
       'usp_Inventory_Adjust',
       [
         { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
         { name: 'ProductId', value: productId, type: 'uniqueidentifier' },
         { name: 'QuantityDelta', value: quantityDelta },
         { name: 'Reason', value: reason },

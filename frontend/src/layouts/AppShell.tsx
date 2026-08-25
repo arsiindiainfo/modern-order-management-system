@@ -19,19 +19,24 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../app/useAuth';
+import type { UserRole } from '../features/auth/types';
 import logoHorizontal from '../assets/brand/logo-horizontal.png';
 
 const DRAWER_WIDTH = 240;
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { label: string; path: string; icon: typeof DashboardOutlinedIcon; roles?: UserRole[] }[] = [
   { label: 'Dashboard', path: '/', icon: DashboardOutlinedIcon },
   { label: 'Customers', path: '/customers', icon: PeopleOutlinedIcon },
   { label: 'Products', path: '/products', icon: Inventory2OutlinedIcon },
   { label: 'Orders', path: '/orders', icon: ReceiptLongOutlinedIcon },
+  { label: 'Discounts', path: '/discounts', icon: LocalOfferOutlinedIcon, roles: ['TENANT_ADMIN', 'MANAGER'] },
+  { label: 'Audit Log', path: '/audit', icon: HistoryOutlinedIcon, roles: ['TENANT_ADMIN'] },
 ];
 
 // No BrandFooter here — §29 branding is explicitly deferred (see the
@@ -60,7 +65,7 @@ export function AppShell() {
         </Box>
       </Box>
       <List sx={{ px: 1.5 }}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.roles || (user && item.roles.includes(user.role))).map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <ListItemButton

@@ -11,6 +11,7 @@ RETURN (
     ('PENDING',    'CONFIRMED'),
     ('CONFIRMED',  'PROCESSING'),
     ('PROCESSING', 'SHIPPED'),
+    ('CONFIRMED',  'SHIPPED'),   -- usp_Orders_RecordShipment (Phase 4): nothing in the plan documents what action drives CONFIRMED->PROCESSING, so shipping is legal straight from CONFIRMED too — the only pre-ship state Phase 4 can actually reach
     ('SHIPPED',    'DELIVERED'),
     ('PENDING',    'ON_HOLD'),
     ('CONFIRMED',  'ON_HOLD'),

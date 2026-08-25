@@ -1,9 +1,11 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Customers_Deactivate
-  @TenantId UNIQUEIDENTIFIER,
-  @Id       UNIQUEIDENTIFIER
+  @TenantId    UNIQUEIDENTIFIER,
+  @ActorUserId UNIQUEIDENTIFIER,
+  @Id          UNIQUEIDENTIFIER
 AS
 BEGIN
   SET NOCOUNT ON;
+  SET XACT_ABORT ON;
 
   IF NOT EXISTS (SELECT 1 FROM Customers WHERE Id = @Id AND TenantId = @TenantId)
   BEGIN
@@ -11,5 +13,10 @@ BEGIN
     RETURN;
   END
 
-  UPDATE Customers SET IsActive = 0 WHERE Id = @Id AND TenantId = @TenantId;
+  BEGIN TRANSACTION;
+    UPDATE Customers SET IsActive = 0 WHERE Id = @Id AND TenantId = @TenantId;
+
+    INSERT INTO AuditLogs (Id, TenantId, EntityName, EntityId, Action, ChangedByUserId)
+    VALUES (NEWID(), @TenantId, 'Customer', @Id, 'DELETE', @ActorUserId);
+  COMMIT TRANSACTION;
 END

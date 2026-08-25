@@ -2,6 +2,8 @@ import { Box, Card, CardActionArea, CardContent, Stack, Typography } from '@mui/
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
 
@@ -21,8 +23,8 @@ export function DashboardPage() {
         Signed in as {user?.role.replace('_', ' ').toLowerCase()}.
       </Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-        <Card variant="outlined" sx={{ flex: 1 }}>
+      <Stack direction="row" sx={{ flexWrap: 'wrap' }} spacing={2}>
+        <Card variant="outlined" sx={{ flex: 1, minWidth: 220 }}>
           <CardActionArea onClick={() => void navigate('/customers')} sx={{ p: 1 }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <PeopleOutlinedIcon color="primary" fontSize="large" />
@@ -38,7 +40,7 @@ export function DashboardPage() {
           </CardActionArea>
         </Card>
 
-        <Card variant="outlined" sx={{ flex: 1 }}>
+        <Card variant="outlined" sx={{ flex: 1, minWidth: 220 }}>
           <CardActionArea onClick={() => void navigate('/products')} sx={{ p: 1 }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Inventory2OutlinedIcon color="primary" fontSize="large" />
@@ -54,7 +56,7 @@ export function DashboardPage() {
           </CardActionArea>
         </Card>
 
-        <Card variant="outlined" sx={{ flex: 1 }}>
+        <Card variant="outlined" sx={{ flex: 1, minWidth: 220 }}>
           <CardActionArea onClick={() => void navigate('/orders')} sx={{ p: 1 }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <ReceiptLongOutlinedIcon color="primary" fontSize="large" />
@@ -69,6 +71,42 @@ export function DashboardPage() {
             </CardContent>
           </CardActionArea>
         </Card>
+
+        {(user?.role === 'TENANT_ADMIN' || user?.role === 'MANAGER') && (
+          <Card variant="outlined" sx={{ flex: 1, minWidth: 220 }}>
+            <CardActionArea onClick={() => void navigate('/discounts')} sx={{ p: 1 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <LocalOfferOutlinedIcon color="primary" fontSize="large" />
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Discounts
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Manage discount codes
+                  </Typography>
+                </Box>
+              </CardContent>
+            </CardActionArea>
+          </Card>
+        )}
+
+        {user?.role === 'TENANT_ADMIN' && (
+          <Card variant="outlined" sx={{ flex: 1, minWidth: 220 }}>
+            <CardActionArea onClick={() => void navigate('/audit')} sx={{ p: 1 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <HistoryOutlinedIcon color="primary" fontSize="large" />
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Audit Log
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Review who changed what, and when
+                  </Typography>
+                </Box>
+              </CardContent>
+            </CardActionArea>
+          </Card>
+        )}
       </Stack>
     </Box>
   );

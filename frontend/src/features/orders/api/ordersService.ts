@@ -8,6 +8,10 @@ import type {
   OrderListItem,
   OrderStatusActionValues,
   OrderSummary,
+  PaymentResult,
+  RecordPaymentValues,
+  RecordShipmentValues,
+  ShipmentResult,
 } from '../types';
 
 interface Envelope<T> {
@@ -52,6 +56,16 @@ export const ordersService = {
 
   async cancel(id: string, values: OrderStatusActionValues): Promise<OrderSummary> {
     const { data } = await apiClient.post<Envelope<OrderSummary>>(`/orders/${id}/cancel`, values);
+    return data.data;
+  },
+
+  async recordPayment(id: string, values: RecordPaymentValues): Promise<PaymentResult> {
+    const { data } = await apiClient.post<Envelope<PaymentResult>>(`/orders/${id}/payment`, values);
+    return data.data;
+  },
+
+  async recordShipment(id: string, values: RecordShipmentValues): Promise<ShipmentResult> {
+    const { data } = await apiClient.post<Envelope<ShipmentResult>>(`/orders/${id}/ship`, values);
     return data.data;
   },
 };

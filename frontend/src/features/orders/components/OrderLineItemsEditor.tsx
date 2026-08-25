@@ -16,6 +16,7 @@ export interface OrderLineFormValues {
 
 export interface OrderLineItemsFormValues {
   customerId: string;
+  discountCode?: string;
   lines: OrderLineFormValues[];
 }
 

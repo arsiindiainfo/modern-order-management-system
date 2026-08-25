@@ -46,6 +46,23 @@ export interface OrderListRow extends OrderListItemRow {
   TotalItems: number;
 }
 
+export interface PaymentResultRow {
+  PaymentId: string;
+  PaymentStatus: string;
+  OrderId: string;
+  OrderStatus: string;
+  OrderVersion: number;
+}
+
+export interface ShipmentResultRow {
+  ShipmentId: string;
+  Carrier: string;
+  TrackingNumber: string;
+  OrderId: string;
+  OrderStatus: string;
+  OrderVersion: number;
+}
+
 export interface OrderHistoryRow {
   FromStatus: string | null;
   ToStatus: string;
@@ -113,11 +130,13 @@ export class OrdersRepository {
     actorUserId: string,
     customerId: string,
     lines: OrderLineInput[],
+    discountCode?: string,
   ): Promise<OrderRow> {
     const rows = await this.runner.execute<OrderRow>('usp_Orders_Create', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
       { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'CustomerId', value: customerId, type: 'uniqueidentifier' },
+      { name: 'DiscountCode', value: discountCode ?? null },
       { name: 'Lines', value: buildOrderLinesTable(lines) },
     ]);
     return rows[0];
@@ -125,12 +144,14 @@ export class OrdersRepository {
 
   async update(
     tenantId: string,
+    actorUserId: string,
     id: string,
     expectedVersion: number,
     customerId: string,
   ): Promise<OrderRow | undefined> {
     const rows = await this.runner.execute<OrderRow>('usp_Orders_Update', [
       { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
       { name: 'Id', value: id, type: 'uniqueidentifier' },
       { name: 'ExpectedVersion', value: expectedVersion },
       { name: 'CustomerId', value: customerId, type: 'uniqueidentifier' },
@@ -155,6 +176,57 @@ export class OrdersRepository {
         { name: 'ExpectedVersion', value: expectedVersion },
         { name: 'ToStatus', value: toStatus },
         { name: 'Note', value: note ?? null },
+      ],
+    );
+    return rows[0];
+  }
+
+  async recordPayment(
+    tenantId: string,
+    actorUserId: string,
+    orderId: string,
+    provider: string,
+    amount: number,
+    currency: string,
+    transactionRef: string,
+  ): Promise<PaymentResultRow> {
+    const rows = await this.runner.execute<PaymentResultRow>(
+      'usp_Orders_RecordPayment',
+      [
+        { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
+        { name: 'OrderId', value: orderId, type: 'uniqueidentifier' },
+        { name: 'Provider', value: provider },
+        {
+          name: 'Amount',
+          value: amount,
+          type: 'decimal',
+          typeParams: [12, 2],
+        },
+        { name: 'Currency', value: currency },
+        { name: 'TransactionRef', value: transactionRef },
+      ],
+    );
+    return rows[0];
+  }
+
+  async recordShipment(
+    tenantId: string,
+    actorUserId: string,
+    orderId: string,
+    expectedVersion: number,
+    carrier: string,
+    trackingNumber: string,
+  ): Promise<ShipmentResultRow> {
+    const rows = await this.runner.execute<ShipmentResultRow>(
+      'usp_Orders_RecordShipment',
+      [
+        { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+        { name: 'ActorUserId', value: actorUserId, type: 'uniqueidentifier' },
+        { name: 'OrderId', value: orderId, type: 'uniqueidentifier' },
+        { name: 'ExpectedVersion', value: expectedVersion },
+        { name: 'Carrier', value: carrier },
+        { name: 'TrackingNumber', value: trackingNumber },
       ],
     );
     return rows[0];

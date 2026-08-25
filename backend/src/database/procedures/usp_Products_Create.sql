@@ -1,5 +1,6 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Products_Create
   @TenantId      UNIQUEIDENTIFIER,
+  @ActorUserId   UNIQUEIDENTIFIER,
   @Sku           NVARCHAR(40),
   @Name          NVARCHAR(200),
   @UnitPrice     DECIMAL(12,2),
@@ -28,6 +29,9 @@ BEGIN
     -- always have a row to work against.
     INSERT INTO InventoryItems (Id, TenantId, ProductId, QuantityOnHand, ReorderLevel)
     VALUES (NEWID(), @TenantId, @Id, @InitialStock, @ReorderLevel);
+
+    INSERT INTO AuditLogs (Id, TenantId, EntityName, EntityId, Action, ChangedByUserId)
+    VALUES (NEWID(), @TenantId, 'Product', @Id, 'CREATE', @ActorUserId);
   COMMIT TRANSACTION;
 
   SELECT Id, Sku, Name, UnitPrice, Currency, IsActive, CreatedAt

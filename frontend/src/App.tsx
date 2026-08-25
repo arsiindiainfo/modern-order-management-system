@@ -12,6 +12,8 @@ import { ProductFormPage } from './features/products/pages/ProductFormPage';
 import { OrdersListPage } from './features/orders/pages/OrdersListPage';
 import { OrderCreatePage } from './features/orders/pages/OrderCreatePage';
 import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
+import { DiscountsListPage } from './features/discounts/pages/DiscountsListPage';
+import { AuditListPage } from './features/audit/pages/AuditListPage';
 
 function AppRoutes() {
   return (
@@ -31,6 +33,8 @@ function AppRoutes() {
           <Route path="/orders" element={<OrdersListPage />} />
           <Route path="/orders/new" element={<OrderCreatePage />} />
           <Route path="/orders/:id" element={<OrderDetailPage />} />
+          <Route path="/discounts" element={<DiscountsListPage />} />
+          <Route path="/audit" element={<AuditListPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

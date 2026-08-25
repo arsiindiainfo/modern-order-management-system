@@ -16,6 +16,7 @@ import {
   ApiOkEnvelope,
   ApiOkPaginatedEnvelope,
 } from '../../common/decorators/api-ok-envelope.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { TenantId } from '../../common/decorators/tenant-id.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,6 +24,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantScopeGuard } from '../../common/guards/tenant-scope.guard';
 import { ParsePaginationPipe } from '../../common/pipes/parse-pagination.pipe';
 import type { PaginationQuery } from '../../common/pipes/parse-pagination.pipe';
+import type { AuthUser } from '../../common/types/auth-user.interface';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { InventoryResponseDto } from './dto/inventory-response.dto';
@@ -54,8 +56,12 @@ export class ProductsController {
   @Post()
   @Roles('TENANT_ADMIN', 'MANAGER')
   @ApiOkEnvelope(ProductResponseDto)
-  create(@TenantId() tenantId: string, @Body() dto: CreateProductDto) {
-    return this.productsService.create(tenantId, dto);
+  create(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateProductDto,
+  ) {
+    return this.productsService.create(tenantId, user.userId, dto);
   }
 
   @Put(':id')
@@ -63,17 +69,22 @@ export class ProductsController {
   @ApiOkEnvelope(ProductResponseDto)
   update(
     @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
   ) {
-    return this.productsService.update(tenantId, id, dto);
+    return this.productsService.update(tenantId, user.userId, id, dto);
   }
 
   @Delete(':id')
   @Roles('TENANT_ADMIN')
   @HttpCode(HttpStatus.OK)
-  async deactivate(@TenantId() tenantId: string, @Param('id') id: string) {
-    await this.productsService.deactivate(tenantId, id);
+  async deactivate(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    await this.productsService.deactivate(tenantId, user.userId, id);
     return { deactivated: true };
   }
 
@@ -88,9 +99,10 @@ export class ProductsController {
   @ApiOkEnvelope(InventoryResponseDto)
   adjustInventory(
     @TenantId() tenantId: string,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: AdjustInventoryDto,
   ) {
-    return this.productsService.adjustInventory(tenantId, id, dto);
+    return this.productsService.adjustInventory(tenantId, user.userId, id, dto);
   }
 }

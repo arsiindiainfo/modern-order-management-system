@@ -1,5 +1,6 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Customers_Update
   @TenantId         UNIQUEIDENTIFIER,
+  @ActorUserId      UNIQUEIDENTIFIER,
   @Id               UNIQUEIDENTIFIER,
   @Name             NVARCHAR(150),
   @Email            NVARCHAR(255),
@@ -9,6 +10,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Customers_Update
 AS
 BEGIN
   SET NOCOUNT ON;
+  SET XACT_ABORT ON;
 
   IF NOT EXISTS (SELECT 1 FROM Customers WHERE Id = @Id AND TenantId = @TenantId)
   BEGIN
@@ -16,13 +18,18 @@ BEGIN
     RETURN;
   END
 
-  UPDATE Customers
-  SET Name = @Name,
-      Email = @Email,
-      Phone = @Phone,
-      BillingAddress = @BillingAddress,
-      ShippingAddress = @ShippingAddress
-  WHERE Id = @Id AND TenantId = @TenantId;
+  BEGIN TRANSACTION;
+    UPDATE Customers
+    SET Name = @Name,
+        Email = @Email,
+        Phone = @Phone,
+        BillingAddress = @BillingAddress,
+        ShippingAddress = @ShippingAddress
+    WHERE Id = @Id AND TenantId = @TenantId;
+
+    INSERT INTO AuditLogs (Id, TenantId, EntityName, EntityId, Action, ChangedByUserId)
+    VALUES (NEWID(), @TenantId, 'Customer', @Id, 'UPDATE', @ActorUserId);
+  COMMIT TRANSACTION;
 
   SELECT Id, Name, Email, Phone, BillingAddress, ShippingAddress, IsActive, CreatedAt
   FROM Customers

@@ -1,11 +1,13 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Inventory_Adjust
   @TenantId       UNIQUEIDENTIFIER,
+  @ActorUserId    UNIQUEIDENTIFIER,
   @ProductId      UNIQUEIDENTIFIER,
   @QuantityDelta  INT,
   @Reason         NVARCHAR(300)
 AS
 BEGIN
   SET NOCOUNT ON;
+  SET XACT_ABORT ON;
 
   DECLARE @CurrentOnHand INT;
   SELECT @CurrentOnHand = i.QuantityOnHand
@@ -25,10 +27,19 @@ BEGIN
     RETURN;
   END
 
-  UPDATE InventoryItems
-  SET QuantityOnHand = QuantityOnHand + @QuantityDelta,
-      UpdatedAt = SYSUTCDATETIME()
-  WHERE ProductId = @ProductId;
+  BEGIN TRANSACTION;
+    UPDATE InventoryItems
+    SET QuantityOnHand = QuantityOnHand + @QuantityDelta,
+        UpdatedAt = SYSUTCDATETIME()
+    WHERE ProductId = @ProductId;
+
+    -- Reason is intentionally not stored on AuditLogs (§10/§11.4 keeps it
+    -- to {entityName, entityId, action, changedBy, changedAt} only) — it
+    -- only ever lived in the request, matching the doc's field-minimalism
+    -- rule for the audit trail's public shape.
+    INSERT INTO AuditLogs (Id, TenantId, EntityName, EntityId, Action, ChangedByUserId)
+    VALUES (NEWID(), @TenantId, 'Product', @ProductId, 'UPDATE', @ActorUserId);
+  COMMIT TRANSACTION;
 
   SELECT
     p.Id AS ProductId,

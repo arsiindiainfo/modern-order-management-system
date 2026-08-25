@@ -1,12 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsUUID, ValidateNested } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { OrderLineInputDto } from './order-line-input.dto';
 
 export class CreateOrderDto {
   @ApiProperty({ example: 'c9d1e2f3-...' })
   @IsUUID()
   customerId!: string;
+
+  @ApiProperty({ required: false, example: 'WELCOME10' })
+  @IsOptional()
+  @IsString()
+  discountCode?: string;
 
   @ApiProperty({ type: [OrderLineInputDto] })
   @ArrayMinSize(1)
