@@ -312,6 +312,96 @@ async function main() {
   }
   console.log(`Seeded ${DEMO_ORDERS.length} orders.`);
 
+  await runner.execute('usp_Discounts_Create', [
+    { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+    { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+    { name: 'Code', value: 'WELCOME10' },
+    { name: 'Type', value: 'PERCENT' },
+    { name: 'Value', value: 10, type: 'decimal', typeParams: [12, 2] },
+    {
+      name: 'StartsAt',
+      value: new Date('2026-01-01T00:00:00Z'),
+      type: 'datetime2',
+      typeParams: [3],
+    },
+    {
+      name: 'EndsAt',
+      value: new Date('2026-12-31T23:59:59Z'),
+      type: 'datetime2',
+      typeParams: [3],
+    },
+  ]);
+  await runner.execute('usp_Discounts_Create', [
+    { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+    { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+    { name: 'Code', value: 'FLAT5' },
+    { name: 'Type', value: 'FIXED' },
+    { name: 'Value', value: 5, type: 'decimal', typeParams: [12, 2] },
+    {
+      name: 'StartsAt',
+      value: new Date('2026-01-01T00:00:00Z'),
+      type: 'datetime2',
+      typeParams: [3],
+    },
+    {
+      name: 'EndsAt',
+      value: new Date('2026-12-31T23:59:59Z'),
+      type: 'datetime2',
+      typeParams: [3],
+    },
+    { name: 'UsageLimit', value: 50 },
+  ]);
+  console.log('Seeded 2 discount codes.');
+
+  // A fully paid + shipped order, using a discount code, so the new
+  // payment/shipment/discount UI has real, already-progressed data.
+  const shippedOrderLines = new mssql.Table('dbo.OrderLineInput');
+  shippedOrderLines.columns.add('ProductId', mssql.UniqueIdentifier);
+  shippedOrderLines.columns.add('Quantity', mssql.Int);
+  shippedOrderLines.rows.add(productIds[0], 5);
+  shippedOrderLines.rows.add(productIds[6], 10);
+
+  const [shippedOrder] = await runner.execute<{
+    Id: string;
+    Version: number;
+    GrandTotal: number;
+    Currency: string;
+  }>('usp_Orders_Create', [
+    { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+    { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+    { name: 'CustomerId', value: customerIds[3], type: 'uniqueidentifier' },
+    { name: 'DiscountCode', value: 'WELCOME10' },
+    { name: 'Lines', value: shippedOrderLines },
+  ]);
+
+  const [paid] = await runner.execute<{ OrderVersion: number }>(
+    'usp_Orders_RecordPayment',
+    [
+      { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+      { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+      { name: 'OrderId', value: shippedOrder.Id, type: 'uniqueidentifier' },
+      { name: 'Provider', value: 'STRIPE' },
+      {
+        name: 'Amount',
+        value: shippedOrder.GrandTotal,
+        type: 'decimal',
+        typeParams: [12, 2],
+      },
+      { name: 'Currency', value: shippedOrder.Currency },
+      { name: 'TransactionRef', value: 'pi_demo_seed_001' },
+    ],
+  );
+
+  await runner.execute('usp_Orders_RecordShipment', [
+    { name: 'TenantId', value: tenantId, type: 'uniqueidentifier' },
+    { name: 'ActorUserId', value: demoUser.Id, type: 'uniqueidentifier' },
+    { name: 'OrderId', value: shippedOrder.Id, type: 'uniqueidentifier' },
+    { name: 'ExpectedVersion', value: paid.OrderVersion },
+    { name: 'Carrier', value: 'UPS' },
+    { name: 'TrackingNumber', value: '1Z999AA10123456784' },
+  ]);
+  console.log('Seeded 1 fully paid + shipped order.');
+
   await dataSource.destroy();
   console.log('Demo catalog seed complete.');
 }
