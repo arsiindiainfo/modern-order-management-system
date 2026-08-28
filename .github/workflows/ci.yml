@@ -12,6 +12,32 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: CIStr0ngPass123!
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'CIStr0ngPass123!' -Q 'SELECT 1' -b -o /dev/null"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+    env:
+      DB_HOST: localhost
+      DB_PORT: 1433
+      DB_USERNAME: sa
+      DB_PASSWORD: CIStr0ngPass123!
+      DB_NAME: OrderManagementSystemTest
+      DB_TRUST_SERVER_CERTIFICATE: "true"
+      # CI-only — never a real secret, this database never holds anything sensitive.
+      JWT_SECRET: ci-only-test-secret-do-not-use-in-production-32c
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_DAYS: "7"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,6 +49,8 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test
+      - run: npm run db:test:setup
+      - run: npm run test:e2e
 
   frontend:
     runs-on: ubuntu-latest

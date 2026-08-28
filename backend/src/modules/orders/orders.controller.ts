@@ -115,6 +115,7 @@ export class OrdersController {
 
   @Post(':id/hold')
   @Roles('TENANT_ADMIN', 'MANAGER')
+  @HttpCode(HttpStatus.OK)
   @ApiOkEnvelope(OrderSummaryResponseDto)
   hold(
     @TenantId() tenantId: string,
@@ -127,6 +128,7 @@ export class OrdersController {
 
   @Post(':id/resume')
   @Roles('TENANT_ADMIN', 'MANAGER')
+  @HttpCode(HttpStatus.OK)
   @ApiOkEnvelope(OrderSummaryResponseDto)
   resume(
     @TenantId() tenantId: string,
@@ -139,6 +141,7 @@ export class OrdersController {
 
   @Post(':id/cancel')
   @Roles('TENANT_ADMIN', 'MANAGER')
+  @HttpCode(HttpStatus.OK)
   @ApiOkEnvelope(OrderSummaryResponseDto)
   cancel(
     @TenantId() tenantId: string,

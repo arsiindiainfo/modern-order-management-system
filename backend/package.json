@@ -17,13 +17,16 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "cross-env NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
     "db:create": "npm run build && node dist/database/create-database.js",
     "migration:create": "typeorm migration:create",
     "migration:run": "npm run build && typeorm migration:run -d dist/database/data-source.js",
     "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",
     "db:setup": "npm run db:create && npm run migration:run",
-    "db:seed": "npm run build && node dist/database/seeds/demo-catalog.seed.js"
+    "db:seed": "npm run build && node dist/database/seeds/demo-catalog.seed.js",
+    "db:test:create": "npm run build && node dist/database/create-test-database.js",
+    "migration:test:run": "npm run build && typeorm migration:run -d dist/database/test-data-source.js",
+    "db:test:setup": "npm run db:test:create && npm run migration:test:run"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -60,6 +63,7 @@
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -90,6 +94,20 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "coverageThreshold": {
+      "**/modules/**/!(audit).service.ts": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "**/modules/audit/audit.service.ts": {
+        "branches": 70,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
   }
 }

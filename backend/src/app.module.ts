@@ -26,6 +26,10 @@ import { TraceIdMiddleware } from './common/middleware/trace-id.middleware';
       isGlobal: true,
       load: [configuration],
       validationSchema: envValidationSchema,
+      // Integration tests (test/*.e2e-spec.ts) run with NODE_ENV=test and
+      // load .env.test — a separate database on the same container, never
+      // the dev database carrying seeded demo data.
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

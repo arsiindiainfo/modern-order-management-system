@@ -10,33 +10,40 @@ BEGIN
   SET NOCOUNT ON;
   SET XACT_ABORT ON;
 
-  DECLARE @FromStatus NVARCHAR(20);
-  SELECT @FromStatus = Status FROM Orders WHERE Id = @OrderId AND TenantId = @TenantId;
-
-  IF @FromStatus IS NULL
+  IF NOT EXISTS (SELECT 1 FROM Orders WHERE Id = @OrderId AND TenantId = @TenantId)
   BEGIN
     RAISERROR('RESOURCE_NOT_FOUND', 16, 1);
     RETURN;
   END
 
-  IF NOT EXISTS (SELECT 1 FROM dbo.ufn_LegalOrderTransitions() WHERE FromStatus = @FromStatus AND ToStatus = 'SHIPPED')
-  BEGIN
-    RAISERROR('INVALID_STATE_TRANSITION', 16, 1);
-    RETURN;
-  END
-
+  DECLARE @FromStatus NVARCHAR(20);
+  -- Same atomic-OUTPUT technique as usp_Orders_UpdateStatus: the version
+  -- check and the legality check must read the SAME updated row, or a
+  -- race loser could see the winner's already-committed status and get
+  -- INVALID_STATE_TRANSITION instead of ORDER_VERSION_CONFLICT.
+  DECLARE @UpdatedRows TABLE (FromStatus NVARCHAR(20));
   DECLARE @ShipmentId UNIQUEIDENTIFIER = NEWID();
 
   BEGIN TRY
     BEGIN TRANSACTION;
 
-    UPDATE Orders SET Status = 'SHIPPED', Version = Version + 1, UpdatedAt = SYSUTCDATETIME()
+    UPDATE Orders
+    SET Status = 'SHIPPED', Version = Version + 1, UpdatedAt = SYSUTCDATETIME()
+    OUTPUT deleted.Status INTO @UpdatedRows
     WHERE Id = @OrderId AND TenantId = @TenantId AND Version = @ExpectedVersion;
 
     IF @@ROWCOUNT = 0
     BEGIN
       ROLLBACK TRANSACTION;
       RAISERROR('ORDER_VERSION_CONFLICT', 16, 1);
+    END
+
+    SELECT @FromStatus = FromStatus FROM @UpdatedRows;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.ufn_LegalOrderTransitions() WHERE FromStatus = @FromStatus AND ToStatus = 'SHIPPED')
+    BEGIN
+      ROLLBACK TRANSACTION;
+      RAISERROR('INVALID_STATE_TRANSITION', 16, 1);
     END
 
     -- the goods have physically left the building: release the reservation

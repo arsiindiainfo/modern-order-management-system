@@ -43,5 +43,30 @@ describe('AuditService', () => {
       ]);
       expect(result.meta.totalItems).toBe(1);
     });
+
+    it('returns zeroed meta and a system-attributed entry when ChangedByName is null', async () => {
+      const row: AuditListRow = {
+        EntityName: 'Order',
+        EntityId: 'order-2',
+        Action: 'UPDATE',
+        ChangedByName: null,
+        ChangedAt: '2026-08-22T14:05:00Z',
+        TotalItems: 1,
+      };
+      repository.list.mockResolvedValue([row]);
+
+      const result = await service.list('tenant-1', {
+        page: 1,
+        pageSize: 20,
+        entityName: 'Order',
+      });
+
+      expect(result.data[0].changedBy).toBeNull();
+      expect(repository.list).toHaveBeenCalledWith('tenant-1', {
+        page: 1,
+        pageSize: 20,
+        entityName: 'Order',
+      });
+    });
   });
 });

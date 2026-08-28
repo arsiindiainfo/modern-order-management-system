@@ -100,6 +100,57 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('create', () => {
+    it('passes the DTO and actor through to the repository and maps the result', async () => {
+      repository.create.mockResolvedValue(buildProductRow());
+
+      const result = await service.create('tenant-1', 'user-1', {
+        sku: 'MUG-BLK-11OZ',
+        name: 'Black Ceramic Mug, 11oz',
+        unitPrice: 12.99,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith('tenant-1', 'user-1', {
+        sku: 'MUG-BLK-11OZ',
+        name: 'Black Ceramic Mug, 11oz',
+        unitPrice: 12.99,
+      });
+      expect(result.id).toBe('prod-1');
+    });
+  });
+
+  describe('update', () => {
+    it('passes the DTO and actor through to the repository and maps the result', async () => {
+      repository.update.mockResolvedValue(
+        buildProductRow({ Name: 'Updated Name' }),
+      );
+
+      const result = await service.update('tenant-1', 'user-1', 'prod-1', {
+        name: 'Updated Name',
+        unitPrice: 14.99,
+      });
+
+      expect(repository.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'prod-1',
+        { name: 'Updated Name', unitPrice: 14.99 },
+      );
+      expect(result.name).toBe('Updated Name');
+    });
+  });
+
+  describe('deactivate', () => {
+    it('delegates to the repository with the acting user', async () => {
+      await service.deactivate('tenant-1', 'user-1', 'prod-1');
+      expect(repository.deactivate).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'prod-1',
+      );
+    });
+  });
+
   describe('getInventory', () => {
     it('maps the joined Products+InventoryItems row', async () => {
       repository.getInventory.mockResolvedValue(buildInventoryRow());
