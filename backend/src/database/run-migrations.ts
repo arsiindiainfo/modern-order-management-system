@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager';
 import { buildDataSourceOptions } from './data-source';
 
 interface DbSecretJson {
@@ -19,7 +22,9 @@ interface CustomResourceResponse {
 
 async function resolveDbCredentials(secretArn: string): Promise<DbSecretJson> {
   const client = new SecretsManagerClient({});
-  const result = await client.send(new GetSecretValueCommand({ SecretId: secretArn }));
+  const result = await client.send(
+    new GetSecretValueCommand({ SecretId: secretArn }),
+  );
   return JSON.parse(result.SecretString ?? '{}') as DbSecretJson;
 }
 
@@ -46,7 +51,8 @@ export async function runMigrations(): Promise<{ migrationsRun: string[] }> {
       username,
       password,
       database: process.env.DB_NAME ?? '',
-      trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
+      trustServerCertificate:
+        process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
     }),
   );
 
@@ -66,12 +72,17 @@ export async function runMigrations(): Promise<{ migrationsRun: string[] }> {
  * a fixed string (not regenerated per call) so CloudFormation never
  * treats this as a resource replacement.
  */
-export async function handler(event: CustomResourceEvent): Promise<CustomResourceResponse> {
+export async function handler(
+  event: CustomResourceEvent,
+): Promise<CustomResourceResponse> {
   if (event.RequestType === 'Delete') {
     return { PhysicalResourceId: 'order-management-migrations' };
   }
 
   const result = await runMigrations();
-  console.log(`Ran ${result.migrationsRun.length} migration(s):`, result.migrationsRun);
+  console.log(
+    `Ran ${result.migrationsRun.length} migration(s):`,
+    result.migrationsRun,
+  );
   return { PhysicalResourceId: 'order-management-migrations', Data: result };
 }

@@ -5,7 +5,10 @@ import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager';
 import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -28,15 +31,21 @@ async function resolveSecretsIntoEnv(): Promise<void> {
 
   const dbSecretArn = process.env.DB_SECRET_ARN;
   if (dbSecretArn) {
-    const result = await client.send(new GetSecretValueCommand({ SecretId: dbSecretArn }));
-    const { username, password } = JSON.parse(result.SecretString ?? '{}') as DbSecretJson;
+    const result = await client.send(
+      new GetSecretValueCommand({ SecretId: dbSecretArn }),
+    );
+    const { username, password } = JSON.parse(
+      result.SecretString ?? '{}',
+    ) as DbSecretJson;
     process.env.DB_USERNAME = username;
     process.env.DB_PASSWORD = password;
   }
 
   const jwtSecretArn = process.env.JWT_SECRET_ARN;
   if (jwtSecretArn) {
-    const result = await client.send(new GetSecretValueCommand({ SecretId: jwtSecretArn }));
+    const result = await client.send(
+      new GetSecretValueCommand({ SecretId: jwtSecretArn }),
+    );
     if (result.SecretString) {
       process.env.JWT_SECRET = result.SecretString;
     }
@@ -48,7 +57,10 @@ async function bootstrap(): Promise<Handler> {
   await resolveSecretsIntoEnv();
 
   const expressApp = express();
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressApp),
+  );
   const configService = app.get(ConfigService<AppConfig, true>);
 
   app.use(helmet());
@@ -74,5 +86,8 @@ let cachedHandler: Handler | undefined;
 
 export const handler: Handler = async (event, context, callback) => {
   cachedHandler ??= await bootstrap();
+  // aws-lambda's Handler<TEvent, TResult> defaults TResult to `any` — the
+  // return type gap is in @types/aws-lambda itself, not unsafe code here.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return cachedHandler(event, context, callback);
 };

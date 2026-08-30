@@ -37,6 +37,9 @@ appsettings.Local.json
 **/TestResults/
 **/coverage/
 
+# CDK synth output
+**/cdk.out/
+
 # OS files
 .DS_Store
 Thumbs.db

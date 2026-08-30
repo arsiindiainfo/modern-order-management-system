@@ -51,22 +51,38 @@ export class OrderManagementStack extends cdk.Stack {
       natGateways: 0,
       subnetConfiguration: [
         { name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
-        { name: 'isolated', subnetType: ec2.SubnetType.PRIVATE_ISOLATED, cidrMask: 24 },
+        {
+          name: 'isolated',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          cidrMask: 24,
+        },
       ],
     });
 
-    const lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
-      vpc,
-      description: 'API and migration-runner Lambdas',
-      allowAllOutbound: true,
-    });
+    const lambdaSecurityGroup = new ec2.SecurityGroup(
+      this,
+      'LambdaSecurityGroup',
+      {
+        vpc,
+        description: 'API and migration-runner Lambdas',
+        allowAllOutbound: true,
+      },
+    );
 
-    const dbSecurityGroup = new ec2.SecurityGroup(this, 'DatabaseSecurityGroup', {
-      vpc,
-      description: 'RDS SQL Server',
-      allowAllOutbound: false,
-    });
-    dbSecurityGroup.addIngressRule(lambdaSecurityGroup, ec2.Port.tcp(1433), 'Lambdas -> RDS');
+    const dbSecurityGroup = new ec2.SecurityGroup(
+      this,
+      'DatabaseSecurityGroup',
+      {
+        vpc,
+        description: 'RDS SQL Server',
+        allowAllOutbound: false,
+      },
+    );
+    dbSecurityGroup.addIngressRule(
+      lambdaSecurityGroup,
+      ec2.Port.tcp(1433),
+      'Lambdas -> RDS',
+    );
 
     vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
       service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
@@ -92,24 +108,42 @@ export class OrderManagementStack extends cdk.Stack {
     // flagging explicitly rather than silently assumed.
     const database = new rds.DatabaseInstance(this, 'Database', {
       engine: rds.DatabaseInstanceEngine.sqlServerEx({
-        // SQL Server 2022 — matches docker-compose.yml's local dev image exactly.
-        version: rds.SqlServerEngineVersion.VER_16,
+        // SQL Server 2022 — matches docker-compose.yml's local dev image.
+        // A specific patch version (not the bare VER_16) is required —
+        // RDS's CloudFormation validation rejects an unpinned major
+        // version, and pinning is the more production-appropriate choice
+        // anyway (a floating "latest" patch is fine for local dev, not
+        // for a database RDS manages upgrades for).
+        version: rds.SqlServerEngineVersion.VER_16_00_4236_2_V1,
       }),
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO,
+      ),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [dbSecurityGroup],
       credentials: rds.Credentials.fromGeneratedSecret('dbadmin'),
       allocatedStorage: 20,
       maxAllocatedStorage: 20, // storage autoscaling is a real-cost surprise risk on a demo — capped explicitly
+      storageEncrypted: true, // no extra cost on db.t3.micro, no reason to leave data at rest unencrypted
       multiAz: false,
       publiclyAccessible: false,
-      removalPolicy: isProd ? cdk.RemovalPolicy.SNAPSHOT : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: isProd
+        ? cdk.RemovalPolicy.SNAPSHOT
+        : cdk.RemovalPolicy.DESTROY,
       deletionProtection: isProd,
       backupRetention: isProd ? cdk.Duration.days(7) : cdk.Duration.days(0),
     });
 
     // ── API Lambda (container image) ───────────────────────────────
+    // An explicit LogGroup (rather than the deprecated `logRetention`
+    // prop) avoids provisioning an extra custom-resource Lambda per
+    // stack just to set retention.
+    const apiFunctionLogGroup = new logs.LogGroup(this, 'ApiFunctionLogGroup', {
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
     const apiFunction = new lambda.DockerImageFunction(this, 'ApiFunction', {
       code: lambda.DockerImageCode.fromImageAsset(backendImageContext),
       vpc,
@@ -128,7 +162,7 @@ export class OrderManagementStack extends cdk.Stack {
         JWT_ACCESS_EXPIRES_IN: '15m',
         JWT_REFRESH_EXPIRES_DAYS: '7',
       },
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: apiFunctionLogGroup,
     });
     database.secret!.grantRead(apiFunction);
     jwtSecret.grantRead(apiFunction);
@@ -144,7 +178,9 @@ export class OrderManagementStack extends cdk.Stack {
     // ── Frontend hosting: S3 + CloudFront (OAC), per §26's table ──────
     const spaBucket = new s3.Bucket(this, 'SpaBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: isProd
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: !isProd,
     });
 
@@ -155,7 +191,9 @@ export class OrderManagementStack extends cdk.Stack {
     // retroactive feature addition.
     const documentsBucket = new s3.Bucket(this, 'DocumentsBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: isProd
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: !isProd,
     });
     documentsBucket.grantReadWrite(apiFunction);
@@ -171,16 +209,26 @@ export class OrderManagementStack extends cdk.Stack {
           origin: new origins.HttpOrigin(
             `${httpApi.apiId}.execute-api.${this.region}.amazonaws.com`,
           ),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
       },
       errorResponses: [
         // SPA client-side routing — an unknown path is index.html, not a CloudFront 404.
-        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
-        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+        },
       ],
     });
 
@@ -190,24 +238,36 @@ export class OrderManagementStack extends cdk.Stack {
     // Lambda, invoked once per deploy via a CDK custom resource, runs
     // the same migration logic backend/src/database/data-source.ts
     // already uses locally.
-    const migrationFunction = new lambda.DockerImageFunction(this, 'MigrationFunction', {
-      code: lambda.DockerImageCode.fromImageAsset(backendImageContext, {
-        cmd: ['database/run-migrations.handler'],
-      }),
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      securityGroups: [lambdaSecurityGroup],
-      memorySize: 512,
-      timeout: cdk.Duration.minutes(5),
-      environment: {
-        DB_HOST: database.dbInstanceEndpointAddress,
-        DB_PORT: database.dbInstanceEndpointPort,
-        DB_NAME: 'OrderManagementSystem',
-        DB_SECRET_ARN: database.secret!.secretArn,
-        DB_TRUST_SERVER_CERTIFICATE: 'false',
+    const migrationFunctionLogGroup = new logs.LogGroup(
+      this,
+      'MigrationFunctionLogGroup',
+      {
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
       },
-      logRetention: logs.RetentionDays.ONE_MONTH,
-    });
+    );
+    const migrationFunction = new lambda.DockerImageFunction(
+      this,
+      'MigrationFunction',
+      {
+        code: lambda.DockerImageCode.fromImageAsset(backendImageContext, {
+          cmd: ['database/run-migrations.handler'],
+        }),
+        vpc,
+        vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+        securityGroups: [lambdaSecurityGroup],
+        memorySize: 512,
+        timeout: cdk.Duration.minutes(5),
+        environment: {
+          DB_HOST: database.dbInstanceEndpointAddress,
+          DB_PORT: database.dbInstanceEndpointPort,
+          DB_NAME: 'OrderManagementSystem',
+          DB_SECRET_ARN: database.secret!.secretArn,
+          DB_TRUST_SERVER_CERTIFICATE: 'false',
+        },
+        logGroup: migrationFunctionLogGroup,
+      },
+    );
     database.secret!.grantRead(migrationFunction);
 
     const migrationProvider = new cr.Provider(this, 'MigrationProvider', {
@@ -254,14 +314,19 @@ export class OrderManagementStack extends cdk.Stack {
       metric: latencyMetric,
       threshold: 3000,
       evaluationPeriods: 3,
-      alarmDescription: 'p99 latency over 3s for 3 consecutive 5-minute windows',
+      alarmDescription:
+        'p99 latency over 3s for 3 consecutive 5-minute windows',
     }).addAlarmAction(new cwActions.SnsAction(alarmTopic));
 
     // ── Outputs ─────────────────────────────────────────────────────
-    new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${distribution.distributionDomainName}` });
+    new cdk.CfnOutput(this, 'SiteUrl', {
+      value: `https://${distribution.distributionDomainName}`,
+    });
     new cdk.CfnOutput(this, 'ApiUrl', { value: httpApi.apiEndpoint });
     new cdk.CfnOutput(this, 'SpaBucketName', { value: spaBucket.bucketName });
-    new cdk.CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
+    new cdk.CfnOutput(this, 'DistributionId', {
+      value: distribution.distributionId,
+    });
     new cdk.CfnOutput(this, 'AlarmTopicArn', { value: alarmTopic.topicArn });
 
     // Exposed for the CDK assertions test and any future cross-stack use.
