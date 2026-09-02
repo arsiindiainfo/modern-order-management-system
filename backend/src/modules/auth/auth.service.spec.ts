@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { AuthRepository, UserWithPasswordHash } from './auth.repository';
+import { RecaptchaService } from './recaptcha.service';
 import { AppException } from '../../common/exceptions/app.exception';
 
 const JWT_CONFIG = {
@@ -31,6 +32,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let repository: jest.Mocked<AuthRepository>;
   let jwtService: jest.Mocked<JwtService>;
+  let recaptchaService: jest.Mocked<RecaptchaService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -50,15 +52,50 @@ describe('AuthService', () => {
           useValue: { sign: jest.fn().mockReturnValue('signed.jwt.token') },
         },
         { provide: ConfigService, useValue: { get: () => JWT_CONFIG } },
+        {
+          provide: RecaptchaService,
+          // Defaults to "verified" so the existing login tests below
+          // don't need to know anything about reCAPTCHA; the dedicated
+          // tests further down override this per-case.
+          useValue: { verify: jest.fn().mockResolvedValue(true) },
+        },
       ],
     }).compile();
 
     service = module.get(AuthService);
     repository = module.get(AuthRepository);
     jwtService = module.get(JwtService);
+    recaptchaService = module.get(RecaptchaService);
   });
 
   describe('login', () => {
+    it('throws RECAPTCHA_FAILED without touching the repository when verification fails', async () => {
+      recaptchaService.verify.mockResolvedValue(false);
+
+      await expect(
+        service.login('priya@acme-demo.com', 'pw', 'bad-token'),
+      ).rejects.toMatchObject({ code: 'RECAPTCHA_FAILED' });
+      expect(repository.getUserByEmail).not.toHaveBeenCalled();
+    });
+
+    it('passes the recaptcha token through to RecaptchaService', async () => {
+      const hash = await bcrypt.hash('correct-password', 4);
+      repository.getUserByEmail.mockResolvedValue(
+        buildUser({ PasswordHash: hash }),
+      );
+      repository.createRefreshToken.mockResolvedValue({
+        Id: 'rt-1',
+        UserId: 'user-1',
+        TokenHash: 'hashed',
+        ExpiresAt: new Date().toISOString(),
+        CreatedAt: new Date().toISOString(),
+      });
+
+      await service.login('priya@acme-demo.com', 'correct-password', 'good-token');
+
+      expect(recaptchaService.verify).toHaveBeenCalledWith('good-token');
+    });
+
     it('throws INVALID_CREDENTIALS when no user matches the email', async () => {
       repository.getUserByEmail.mockResolvedValue(undefined);
 

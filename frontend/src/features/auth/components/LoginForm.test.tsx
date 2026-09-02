@@ -1,14 +1,30 @@
+import { useEffect } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { LoginForm } from './LoginForm';
+import { Recaptcha } from './Recaptcha';
 import { useAuth } from '../hooks/useAuth';
 import type { AppApiError } from '../../../lib/apiClient';
 
 vi.mock('../hooks/useAuth');
 
+// The real widget loads Google's script over the network, which jsdom
+// can't do — auto-verify on mount so every test below behaves as if a
+// human had already solved the checkbox, unless a test overrides this
+// per-case (see "does not enable submit until reCAPTCHA is solved").
+vi.mock('./Recaptcha', () => ({
+  Recaptcha: ({ onVerify }: { onVerify: (token: string | null) => void }) => {
+    useEffect(() => {
+      onVerify('mock-recaptcha-token');
+    }, [onVerify]);
+    return null;
+  },
+}));
+
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedRecaptcha = vi.mocked(Recaptcha);
 
 function mockAuth(login: (email: string, password: string) => Promise<void>) {
   mockedUseAuth.mockReturnValue({
@@ -115,5 +131,30 @@ describe('LoginForm', () => {
     expect(
       await screen.findByText('password must be at least 8 characters'),
     ).toBeInTheDocument();
+  });
+
+  it('does not enable submit until reCAPTCHA is solved', async () => {
+    const user = userEvent.setup();
+    mockedRecaptcha.mockImplementationOnce(() => null); // never calls onVerify
+    setup(vi.fn());
+
+    await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'secret');
+
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
+    await waitFor(() => expect(submitButton).toBeDisabled());
+  });
+
+  it('autofills the demo credentials and enables submit when "Demo login" is clicked', async () => {
+    const user = userEvent.setup();
+    setup(vi.fn());
+
+    await user.click(screen.getByRole('button', { name: /demo login/i }));
+
+    expect(screen.getByLabelText(/email/i)).toHaveValue('manager@acme-demo.com');
+    expect(screen.getByLabelText(/password/i)).toHaveValue('DemoPass123!');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^sign in$/i })).toBeEnabled(),
+    );
   });
 });

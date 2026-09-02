@@ -12,6 +12,7 @@ import {
   aws_logs as logs,
   aws_rds as rds,
   aws_s3 as s3,
+  aws_s3_deployment as s3deploy,
   aws_secretsmanager as secretsmanager,
   aws_sns as sns,
   custom_resources as cr,
@@ -40,6 +41,16 @@ export class OrderManagementStack extends cdk.Stack {
     const { envName } = props;
     const isProd = envName === 'prod';
     const backendImageContext = path.join(__dirname, '..', '..', 'backend');
+    // `npm run build` in frontend/ must have already produced this
+    // directory before `cdk synth`/`cdk deploy` runs — BucketDeployment
+    // bundles whatever is on disk here, it doesn't build the SPA itself.
+    const frontendDistPath = path.join(
+      __dirname,
+      '..',
+      '..',
+      'frontend',
+      'dist',
+    );
 
     // ── Networking ──────────────────────────────────────────────────
     // No NAT Gateway — the dominant non-free-tier hourly cost in a
@@ -230,6 +241,16 @@ export class OrderManagementStack extends cdk.Stack {
           responsePagePath: '/index.html',
         },
       ],
+    });
+
+    // Uploads the built SPA to spaBucket and invalidates the CloudFront
+    // cache on every deploy — without this, the bucket/distribution exist
+    // but stay empty; nothing else in this stack puts the frontend there.
+    new s3deploy.BucketDeployment(this, 'SpaDeployment', {
+      sources: [s3deploy.Source.asset(frontendDistPath)],
+      destinationBucket: spaBucket,
+      distribution,
+      distributionPaths: ['/*'],
     });
 
     // ── Migrations against a private-subnet database ──────────────────

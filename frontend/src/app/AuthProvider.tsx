@@ -58,12 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await authService.login({ email, password });
-    setAccessToken(result.accessToken);
-    setRefreshToken(result.refreshToken);
-    setUser(result.user);
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string, recaptchaToken?: string) => {
+      const result = await authService.login({ email, password, recaptchaToken });
+      setAccessToken(result.accessToken);
+      setRefreshToken(result.refreshToken);
+      setUser(result.user);
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();

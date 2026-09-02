@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'manager@acme-demo.com' })
@@ -10,4 +10,12 @@ export class LoginDto {
   @IsString()
   @MinLength(1)
   password!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Google reCAPTCHA v2 response token. Omitted (or ignored server-side) when reCAPTCHA is not configured.',
+  })
+  @IsOptional()
+  @IsString()
+  recaptchaToken?: string;
 }

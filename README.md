@@ -89,7 +89,12 @@ pushes the Lambda container image itself as part of asset publishing).
 ### Deploying manually
 
 ```bash
-cd infra
+cd frontend && npm install && npm run build   # produces frontend/dist —
+                                               # the stack uploads whatever
+                                               # is already there, it does
+                                               # not build the SPA itself
+
+cd ../infra
 npx cdk diff   -c env=staging     # preview changes
 npx cdk deploy -c env=staging     # or -c env=prod
 ```

@@ -14,6 +14,9 @@ export interface AppConfig {
     accessExpiresIn: string;
     refreshExpiresDays: number;
   };
+  recaptcha: {
+    secretKey: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -34,5 +37,10 @@ export default (): AppConfig => ({
       process.env.JWT_REFRESH_EXPIRES_DAYS ?? '7',
       10,
     ),
+  },
+  recaptcha: {
+    // Empty means disabled — no secret key configured (local dev without
+    // one, or .env.test/CI) skips verification rather than blocking login.
+    secretKey: process.env.RECAPTCHA_SECRET_KEY ?? '',
   },
 });

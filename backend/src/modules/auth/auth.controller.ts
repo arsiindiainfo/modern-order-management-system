@@ -31,7 +31,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkEnvelope(LoginResponseDto)
   login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password, dto.recaptchaToken);
   }
 
   @Post('refresh')

@@ -51,13 +51,19 @@ describe('OrderManagementStack', () => {
     template.resourceCountIs('AWS::CloudFront::Distribution', 1);
   });
 
+  it('deploys the built SPA into the bucket and invalidates the distribution', () => {
+    const template = synthesize('staging');
+    template.hasResource('Custom::CDKBucketDeployment', {});
+  });
+
   it('provisions a migration-runner Lambda wired to a custom resource', () => {
     const template = synthesize('staging');
-    // Four AWS::Lambda::Function resources in the synthesized template:
+    // Five AWS::Lambda::Function resources in the synthesized template:
     // the API, the migration runner, the cr.Provider's own "framework
-    // onEvent" wrapper Lambda, and the shared CDK-managed singleton that
-    // backs the SPA bucket's autoDeleteObjects:true custom resource.
-    template.resourceCountIs('AWS::Lambda::Function', 4);
+    // onEvent" wrapper Lambda, the shared CDK-managed singleton backing
+    // the SPA bucket's autoDeleteObjects:true custom resource, and the
+    // BucketDeployment construct's own upload/invalidate handler.
+    template.resourceCountIs('AWS::Lambda::Function', 5);
     template.hasResource('AWS::CloudFormation::CustomResource', {});
   });
 

@@ -9,6 +9,7 @@ import { CurrentUserDto } from './dto/current-user.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { TokenPairDto } from './dto/token-pair.dto';
 import { JwtPayload } from './jwt-payload.interface';
+import { RecaptchaService } from './recaptcha.service';
 import {
   generateRefreshToken,
   hashToken,
@@ -21,9 +22,19 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<AppConfig, true>,
+    private readonly recaptchaService: RecaptchaService,
   ) {}
 
-  async login(email: string, password: string): Promise<LoginResponseDto> {
+  async login(
+    email: string,
+    password: string,
+    recaptchaToken?: string,
+  ): Promise<LoginResponseDto> {
+    const recaptchaOk = await this.recaptchaService.verify(recaptchaToken);
+    if (!recaptchaOk) {
+      throw new AppException('RECAPTCHA_FAILED');
+    }
+
     const user = await this.authRepository.getUserByEmail(email);
     if (!user || !user.IsActive) {
       throw new AppException('INVALID_CREDENTIALS');

@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { RecaptchaService } from './recaptcha.service';
 import { parseDurationToSeconds } from './token.util';
 
 @Module({
@@ -27,6 +28,6 @@ import { parseDurationToSeconds } from './token.util';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthRepository, JwtStrategy],
+  providers: [AuthService, AuthRepository, JwtStrategy, RecaptchaService],
 })
 export class AuthModule {}

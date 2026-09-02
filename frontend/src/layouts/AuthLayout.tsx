@@ -1,6 +1,6 @@
 import { Box, Container, Paper } from '@mui/material';
 import { Outlet } from 'react-router-dom';
-import logoIcon from '../assets/brand/logo-icon.png';
+import logoHorizontal from '../assets/brand/logo-horizontal.png';
 
 export function AuthLayout() {
   return (
@@ -15,8 +15,13 @@ export function AuthLayout() {
       }}
     >
       <Container maxWidth="xs" disableGutters>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <Box component="img" src={logoIcon} alt="Arsi India Info" sx={{ height: 72, width: 72 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Box
+            component="img"
+            src={logoHorizontal}
+            alt="Arsi India Info"
+            sx={{ width: '100%', maxWidth: 260 }}
+          />
         </Box>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
           <Outlet />

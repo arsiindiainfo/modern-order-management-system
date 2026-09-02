@@ -56,6 +56,10 @@ export const ERROR_CATALOG = {
     httpStatus: HttpStatus.TOO_MANY_REQUESTS,
     message: 'Too many requests. Please try again shortly.',
   },
+  RECAPTCHA_FAILED: {
+    httpStatus: HttpStatus.BAD_REQUEST,
+    message: 'reCAPTCHA verification failed. Please try again.',
+  },
   INTERNAL_ERROR: {
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     message: 'An unexpected error occurred.',
